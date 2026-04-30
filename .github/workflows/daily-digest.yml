@@ -2,7 +2,7 @@ name: LooReads Daily Digest
 
 on:
   schedule:
-    - cron: "30 6 * * *"  # 7:30 AM BST (UTC+1). Change to '30 7 * * *' in winter (GMT)
+    - cron: "30 14 * * *"  # 7:30 AM PDT (UTC-7). Change to '30 15 * * *' in winter (PST)
   workflow_dispatch:        # allows manual trigger from GitHub UI
 
 jobs:
