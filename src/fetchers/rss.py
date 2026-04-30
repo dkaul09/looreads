@@ -1,4 +1,5 @@
 import feedparser
+from src.fetchers.utils import clean_url
 
 TECH_FEEDS = {
     "Ars Technica": "https://feeds.arstechnica.com/arstechnica/technology-lab",
@@ -27,7 +28,7 @@ def fetch_tech_news(max_per_feed: int = 6) -> list[dict]:
                 articles.append({
                     "title": entry.get("title", "").strip(),
                     "summary": summary[:300].strip(),
-                    "url": entry.get("link", ""),
+                    "url": clean_url(entry.get("link", "")),
                     "source": source,
                 })
         except Exception:

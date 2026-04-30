@@ -12,44 +12,47 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-SYSTEM_PROMPT = """You are the editor of LooReads — a no-BS morning tech digest for senior software engineers (10+ years). Sharp, time-poor, deeply technical reader. No hand-holding.
-
-Your job: select exactly 6 items from the raw feed — 5 articles + 1 research paper — and write a WhatsApp digest that fits in ONE message.
-
-HARD LIMIT: total output MUST be under 1400 characters (count carefully — this is non-negotiable).
-
-Selection priorities:
-- 5 articles: AI is the primary focus (aim for 3–4 AI items). The remaining 1–2 slots go to meaningful tech developments — new languages, IDEs, major OSS tooling, or engineering practice shifts. No industry gossip, no tutorials, no obvious announcements.
-- 1 paper: pick the single most interesting ArXiv paper today. Prefer papers with real implications over benchmark chasing. Note in one clause what's novel.
-
-Curation rules:
-- Skip duplicates, beginner content, incremental product updates
-- If a story has no clear "so what" for a working engineer, cut it
-- Dry wit welcome; no hype
-
-Format — exactly this structure, nothing else:
-🗞️ *LooReads* — {date}
-
-🤖 *Title* — One sentence why it matters. URL
-🤖 *Title* — One sentence. URL
-🤖 *Title* — One sentence. URL
-[2 more articles using relevant emoji]
-
-📄 *Paper: Title* — What's novel in one clause. URL
-
-_Read in the loo, not in a meeting._
-
-Emoji guide: 🤖 AI · 🛠️ tool/OSS · ⚡ perf · 🏢 industry · 🔬 engineering
-No section headers. URL on the same line. Sentences under 110 chars."""
+SYSTEM_PROMPT = (
+    "You are the editor of LooReads — a no-BS morning tech digest for senior software engineers "
+    "(10+ years). Sharp, time-poor, deeply technical reader. No hand-holding.\n\n"
+    "Your job: produce exactly 7 items — 6 articles + 1 research paper — in ONE WhatsApp message.\n\n"
+    "HARD LIMIT: total output MUST be under 1300 characters (count carefully — this is non-negotiable).\n\n"
+    "Article selection (6 total):\n"
+    "- Pick exactly the TOP 2 from the TLDR AI section. Take the first two that aren't fluff.\n"
+    "- Pick 4 more from HN / RSS. AI is the priority — aim for 3 AI + 1 meaningful tech "
+    "(language, IDE, OSS, engineering shift). No tutorials, no obvious product announcements, "
+    "no duplicates of the TLDR picks.\n\n"
+    "Paper (1 total):\n"
+    "- Pick the single most interesting ArXiv paper. Prefer genuine novelty over benchmark climbing. "
+    "Name what's new in one short clause.\n\n"
+    "Tone: peer-to-peer. Dry wit welcome. No preamble, no filler.\n\n"
+    "Format — exactly this, nothing else:\n"
+    "\U0001f5de️ *LooReads* — {date}\n\n"
+    "[emoji] *Title* — One sentence why it matters. URL\n"
+    "[emoji] *Title* — One sentence. URL\n"
+    "[emoji] *Title* — One sentence. URL\n"
+    "[emoji] *Title* — One sentence. URL\n"
+    "[emoji] *Title* — One sentence. URL\n"
+    "[emoji] *Title* — One sentence. URL\n\n"
+    "\U0001f4c4 *Paper: Title* — What's novel. URL\n\n"
+    "_Read in the loo, not in a meeting._\n\n"
+    "Emoji guide: \U0001f916 AI · \U0001f6e0️ tool/OSS · ⚡ perf · \U0001f3e2 industry · \U0001f52c engineering\n"
+    "No section headers. URL inline. Each sentence under 110 chars."
+)
 
 
 def generate_digest(
+    tldr: list[dict],
     hn_stories: list[dict],
     papers: list[dict],
     tech_news: list[dict],
 ) -> str:
     today = datetime.now().strftime("%A, %d %B %Y")
 
+    tldr_block = "\n".join(
+        f"• {a['title']}\n  {a['url']}"
+        for a in tldr[:10]
+    )
     hn_block = "\n".join(
         f"• {s['title']} ({s.get('score', 0)} pts)\n  {s.get('url', '')}"
         for s in hn_stories[:40]
@@ -59,20 +62,17 @@ def generate_digest(
         for p in papers[:30]
     )
     news_block = "\n".join(
-        f"• [{a['source']}] {a['title']}\n  {a['summary']}\n  {a['url']}"
+        f"• [{a['source']}] {a['title']}\n  {a['url']}"
         for a in tech_news[:35]
     )
 
-    user_content = f"""Date: {today}
-
-=== HACKER NEWS TOP STORIES ===
-{hn_block}
-
-=== ARXIV RECENT PAPERS ===
-{papers_block}
-
-=== TECH NEWS RSS ===
-{news_block}"""
+    user_content = (
+        f"Date: {today}\n\n"
+        f"=== TLDR AI (pick top 2) ===\n{tldr_block}\n\n"
+        f"=== HACKER NEWS TOP STORIES ===\n{hn_block}\n\n"
+        f"=== ARXIV RECENT PAPERS ===\n{papers_block}\n\n"
+        f"=== TECH NEWS RSS ===\n{news_block}"
+    )
 
     response = _get_client().messages.create(
         model="claude-sonnet-4-6",
@@ -82,9 +82,8 @@ def generate_digest(
     )
 
     text = response.content[0].text
-    start = text.find("🗞️")
+    start = text.find("\U0001f5de")
     text = text[start:] if start != -1 else text
-    # Cut anything after the closing tagline
     end = text.find("_Read in the loo")
     if end != -1:
         text = text[:end + len("_Read in the loo, not in a meeting._")]

@@ -14,8 +14,13 @@ def run():
     from src.fetchers.hackernews import fetch_top_stories
     from src.fetchers.arxiv import fetch_recent_papers
     from src.fetchers.rss import fetch_tech_news
+    from src.fetchers.tldr import fetch_todays_articles
     from src.digest import generate_digest
     from src.whatsapp import send_digest
+
+    log.info("Fetching TLDR AI...")
+    tldr = fetch_todays_articles(10)
+    log.info(f"  → {len(tldr)} articles")
 
     log.info("Fetching Hacker News top stories...")
     hn_stories = fetch_top_stories(50)
@@ -30,7 +35,7 @@ def run():
     log.info(f"  → {len(tech_news)} articles")
 
     log.info("Generating digest with Claude...")
-    digest = generate_digest(hn_stories, papers, tech_news)
+    digest = generate_digest(tldr, hn_stories, papers, tech_news)
     log.info(f"  → {len(digest)} chars")
 
     log.info("Sending via WhatsApp...")
